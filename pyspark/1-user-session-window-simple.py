@@ -1,8 +1,9 @@
 import pandas as pd
 import time
-import shutil
 import os
+import random
 
+from datetime import datetime, timezone
 from pyspark.sql import SparkSession
 from pyspark.sql.types import StructType
 from pyspark.sql.functions import col
@@ -15,16 +16,23 @@ DATA_DIR = "data/1-user-session-window-data.csv"
 INPUT_DIR = "read-data/1-user-session-window-data.csv"
 
 
-def util_make_file_visible(file_number: int = 3, file_type: str = "csv"):
-    """
-    Util function to simulate microbatch.
-    Given a filename, will copy it to target directory.
-    """
-    os.makedirs(INPUT_DIR + "/", exist_ok=True)
-    shutil.copyfile(
-        f"{DATA_DIR}/{file_number}.{file_type}",
-        f"{INPUT_DIR}/{file_number}.{file_type}",
-    )
+def util_generate_data(duration_seconds: int = 20, records_per_batch: int = 20) -> None:
+    start_ts = datetime.now(timezone.utc)
+    batch = 0
+    while (datetime.now(timezone.utc) - start_ts).total_seconds() <= duration_seconds:
+        df = pd.DataFrame(
+            {
+                "user_id": [random.randint(0, 100) for _ in range(records_per_batch)],
+                "event_time": [
+                    datetime.now(timezone.utc) for _ in range(records_per_batch)
+                ],
+            }
+        )
+        df.set_index("user_id").to_csv(f"{INPUT_DIR}/{batch}.csv", index=True)
+        time.sleep(3)
+        batch += 1
+    time.sleep(6)  # wait for expiration
+
 
 def util_clean_file_visible():
     for filename in os.listdir(INPUT_DIR):
@@ -40,7 +48,8 @@ def session_state_fn(
         only gaps between batches triggered bu the timeout will be emitted
     """
     dfs = list(pdfs)
-    if len(dfs) == 0: return
+    if len(dfs) == 0:
+        return
     df: pd.DataFrame = pd.concat(dfs, axis=0).sort_values(by="event_time")
     if state.hasTimedOut:
         (user_id,) = key
@@ -78,7 +87,6 @@ def session_state_fn(
 
 
 if __name__ == "__main__":
-    util_make_file_visible(1)
     spark: SparkSession = (
         SparkSession.builder.master("local")  # type: ignore
         .appName("Python Spark Time Based Session Usecase")
@@ -117,12 +125,10 @@ if __name__ == "__main__":
 
     query = session_df.writeStream.format("console").outputMode("append").start()
 
-    time.sleep(20.0)
-    util_make_file_visible(2)
-    time.sleep(2.0)
-    util_make_file_visible(3)
-    time.sleep(5.0)
+    while not query.isActive:
+        print(f"waiting...")
+        time.sleep(1)
+
+    util_generate_data(20)
     query.stop()
     util_clean_file_visible()
-
-    # if want to rerun, delete target read-data directory
