@@ -50,7 +50,7 @@ def session_state_fn(
     dfs = list(pdfs)
     if len(dfs) == 0:
         return
-    df: pd.DataFrame = pd.concat(dfs, axis=0).sort_values(by="event_time")
+    df = pd.concat(dfs, axis=0).sort_values(by="event_time")
     if state.hasTimedOut:
         (user_id,) = key
         (first_event_time, last_event_time, count) = state.get
