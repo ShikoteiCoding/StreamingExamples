@@ -12,7 +12,6 @@ from pyspark.sql.streaming.state import GroupState, GroupStateTimeout
 from typing import Iterator
 
 CHECKPOINT_DIR = "checkpoints/"
-DATA_DIR = "data/1-user-session-window-data.csv"
 INPUT_DIR = "read-data/1-user-session-window-data.csv"
 
 

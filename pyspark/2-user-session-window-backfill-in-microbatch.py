@@ -12,8 +12,7 @@ from pyspark.sql.streaming.state import GroupState, GroupStateTimeout
 from typing import Iterator
 
 CHECKPOINT_DIR = "checkpoints/"
-DATA_DIR = "data/1-user-session-window-data.csv"
-INPUT_DIR = "read-data/1-user-session-window-data.csv"
+INPUT_DIR = "read-data/2-user-session-window-backfill-in-microbatch.csv"
 
 
 def util_generate_data(duration_seconds: int = 20, records_per_batch: int = 20) -> None:
